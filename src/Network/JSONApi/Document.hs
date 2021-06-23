@@ -17,6 +17,7 @@ module Network.JSONApi.Document
   , mkIncludedResource
   , mkSimpleDocument
   , mkSimpleDocuments
+  , mkSimpleDocument'
   ) where
 
 import Control.DeepSeq (NFData)
@@ -142,6 +143,12 @@ require links or Meta data.
 -}
 mkSimpleDocuments :: ResourcefulEntity a => [a] -> Document a
 mkSimpleDocuments res = mkDocuments res Nothing Nothing
+
+{- |
+A function for document which do not require links or Meta data.
+-}
+mkSimpleDocument' :: ResourceData a -> Document a
+mkSimpleDocument' res = mkDocument' res Nothing Nothing
 
 {- |
 Constructor function for the Document data type.

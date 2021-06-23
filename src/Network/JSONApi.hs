@@ -31,6 +31,7 @@ module Network.JSONApi
 , D.mkDocument'
 , D.mkSimpleDocument
 , D.mkSimpleDocuments
+, D.mkSimpleDocument'
 , D.singleton
 , D.list
 , D.mkCompoundDocument
