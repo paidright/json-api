@@ -9,7 +9,9 @@ module Network.JSONApi.Pagination (
   , mkPaginationLinks
 ) where
 
+import Data.Aeson (ToJSON (toJSON), (.=), object)
 import Network.JSONApi.Link (Links, Rel, mkLinks)
+import Network.JSONApi.Meta (MetaObject (typeName))
 import Network.URL (URL, add_param)
 import qualified GHC.Generics as G
 import Control.DeepSeq (NFData)
@@ -25,6 +27,22 @@ data Pagination = Pagination {
                   } deriving G.Generic
 
 instance NFData Pagination
+
+
+instance ToJSON Pagination where
+  toJSON (Pagination (PageIndex num) (PageSize size)  (ResourceCount count)) =
+    object [
+        "pageSize" .= size
+      , "currentPage" .= num
+      , "totalDocuments" .= count
+      ]
+
+{- |
+Pagination can be used as a meta object if required in addition to the links generated
+for paging.
+-}
+instance MetaObject Pagination where
+  typeName _ = "pagination"
 
 {- |
 We can specify limits on the number of rows we would like back from the database
