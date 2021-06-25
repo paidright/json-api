@@ -64,7 +64,9 @@ data Strategy = PageStrategy | OffsetStrategy
 {- |
 Helper function to build relative links for a collection of resources of type ResourceEntity.
 
-This helper function assumes that the first page is always page 0.
+The first page for 'PageStrategy' is \'@'PageIndex' 1@\'.
+
+The first page for 'OffsetStrategy' is \'@'PageIndex' 0@\'.
 -}
 mkPaginationLinks :: Strategy -> URL -> Pagination -> Links
 mkPaginationLinks strategy baseUrl page =
