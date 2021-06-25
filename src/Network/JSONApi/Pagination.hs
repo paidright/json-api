@@ -60,6 +60,7 @@ Pagination strategies are commonly implemented by the server of which Page and O
 are commonly used.
 -}
 data Strategy = PageStrategy | OffsetStrategy
+  deriving (Eq, Ord, Show)
 
 {- |
 Helper function to build relative links for a collection of resources of type ResourceEntity.
