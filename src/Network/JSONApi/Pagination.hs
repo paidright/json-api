@@ -45,15 +45,15 @@ We can specify limits on the number of rows we would like back from the database
 -}
 newtype PageSize = PageSize {
   getPageSize :: Word
-} deriving Show
+} deriving (Eq, Ord, Show)
 
 newtype PageIndex = PageIndex {
   getPageIndex :: Word
-} deriving Show
+} deriving (Eq, Ord, Show)
 
 newtype ResourceCount = ResourceCount {
   getResourceCount :: Word
-} deriving Show
+} deriving (Eq, Ord, Show)
 
 {- |
 Pagination strategies are commonly implemented by the server of which Page and Offset
