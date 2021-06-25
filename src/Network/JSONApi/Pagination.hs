@@ -22,7 +22,7 @@ data Pagination = Pagination {
                       getPaginationPageIndex :: PageIndex
                     , getPaginationPageSize :: PageSize
                     , getPaginationResourceCount :: ResourceCount
-                  }
+                  } deriving (Eq, Ord, Show)
 
 
 instance ToJSON Pagination where
