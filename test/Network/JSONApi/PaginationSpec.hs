@@ -21,6 +21,11 @@ spec =
         Links lm -> do
           let links = toList lm
           map fst links `shouldBe` ["first", "last", "next", "prev"]
+    
+    it "should return empty links when resource count is zero" $ do
+      let p = Pagination (PageIndex 1) (PageSize 10) (ResourceCount 0)
+      let Links links = mkPaginationLinks PageStrategy (fromJust $ importURL "/users") p
+      map fst (toList links) `shouldBe` []
 
     it "should return proper hrefs for paging strategy" $ do
       let p = Pagination (PageIndex 2) (PageSize 10) (ResourceCount 30)
@@ -45,7 +50,7 @@ spec =
                             ("prev", "/users?page%5blimit%5d=10&page%5boffset%5d=0")]
 
     it "should support the page strategy" $ do
-      let p = Pagination (PageIndex 0) (PageSize 10) (ResourceCount 20)
+      let p = Pagination (PageIndex 1) (PageSize 10) (ResourceCount 20)
       let results = mkPaginationLinks PageStrategy (fromJust $ importURL "/users") p
       case results of
         Links lm -> do
