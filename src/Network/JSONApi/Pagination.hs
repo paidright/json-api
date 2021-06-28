@@ -9,6 +9,7 @@ module Network.JSONApi.Pagination (
   , mkPaginationLinks
 ) where
 
+import Control.Monad (guard)
 import Data.Aeson (ToJSON (toJSON), (.=), object)
 import Network.JSONApi.Link (Links, Rel, mkLinks)
 import Network.JSONApi.Meta (MetaObject (typeName))
@@ -63,52 +64,50 @@ data Strategy = PageStrategy | OffsetStrategy
   deriving (Eq, Ord, Show)
 
 {- |
-Helper function to build relative links for a collection of resources of type ResourceEntity.
+Build relative links for a collection of resources of type ResourceEntity.
 
 The first page for 'PageStrategy' is \'@'PageIndex' 1@\'.
 
 The first page for 'OffsetStrategy' is \'@'PageIndex' 0@\'.
+
+Zero resources means zero pages, so no links will be generated for 
+@'ResourceCount' 0@.
 -}
 mkPaginationLinks :: Strategy -> URL -> Pagination -> Links
 mkPaginationLinks strategy baseUrl page =
-  mkLinks (baseLinks ++ nextLinks ++ prevLinks)
+  mkLinks $
+  foldMap (pageLink "first") (firstPageIndex strategy page) <>
+  foldMap (pageLink "last") (lastPageIndex strategy page) <>
+  foldMap (pageLink "next") (nextPageIndex strategy page) <>
+  foldMap (pageLink "prev") (prevPageIndex strategy page)
     where
-      pgIndex    = getPageIndex $ getPaginationPageIndex page
-      pgSize     = getPageSize $ getPaginationPageSize page
-      baseLinks  = [mkPaginationLink strategy "first" baseUrl (firstPageIndex strategy) pgSize
-                  , mkPaginationLink strategy "last" baseUrl (lastPageIndex strategy page) pgSize]
-      nextLinks  = [mkPaginationLink strategy "next" baseUrl (pgIndex + 1) pgSize | shouldGenNextLink strategy page]
-      prevLinks  = [mkPaginationLink strategy "prev" baseUrl (pgIndex - 1) pgSize | shouldGenPrevLink strategy page]
+      pgSize = getPageSize $ getPaginationPageSize page
+      pageLink name (PageIndex index) = [ mkPaginationLink strategy name baseUrl index pgSize ]
 
-{- |
-If we are at the last page then we do not generate a next link. This function tells us whether to
-generate a next link based on the page strategy.
--}
-shouldGenNextLink :: Strategy -> Pagination -> Bool
-shouldGenNextLink PageStrategy pagination =
-  (getPageIndex . getPaginationPageIndex) pagination < numberOfPagesInPageList pagination
-shouldGenNextLink OffsetStrategy pagination =
-  (getPageIndex . getPaginationPageIndex) pagination < numberOfPagesInPageList pagination - 1
+nextPageIndex :: Strategy -> Pagination -> Maybe PageIndex
+nextPageIndex PageStrategy pagination = do
+  let 
+    count = pageCount pagination
+    PageIndex pageIndex = getPaginationPageIndex pagination
+  PageIndex (pageIndex + 1) <$ guard (pageIndex < count)
+nextPageIndex OffsetStrategy pagination = do
+  let
+    count = pageCount pagination
+    PageIndex pageIndex = getPaginationPageIndex pagination
+  PageIndex (pageIndex + 1) <$ guard (pageIndex < count - 1)
 
-{- |
-If we on the first page then we do not generate a prev link. This function tells us whether we can generate
-a prev link.
--}
-shouldGenPrevLink :: Strategy -> Pagination -> Bool
-shouldGenPrevLink strategy pagination =
-  (getPageIndex . getPaginationPageIndex) pagination > firstPageIndex strategy
+prevPageIndex :: Strategy -> Pagination -> Maybe PageIndex
+prevPageIndex strategy pagination = do
+  PageIndex firstIndex <- firstPageIndex strategy pagination
+  let PageIndex pageIndex = getPaginationPageIndex pagination
+  PageIndex (pageIndex - 1) <$ guard (pageIndex > firstIndex)
 
-{- |
-This function calculates the number of pages in the list.
--}
-numberOfPagesInPageList :: Pagination -> Word
-numberOfPagesInPageList (Pagination _ pageSize resourceCount) =
-  if resCount `mod` pgSize == 0
-  then resCount `quot` pgSize
-  else (resCount `quot` pgSize) + 1
-    where
-      pgSize     = getPageSize pageSize
-      resCount   = getResourceCount resourceCount
+-- | Calculate the total number of pages using page size and total resource count.
+pageCount :: Pagination -> Word
+pageCount (Pagination _ pageSize resourceCount) =
+  if r == 0 then q else q + 1
+  where
+    (q, r) = quotRem (getResourceCount resourceCount) (getPageSize pageSize)
 
 {- |
 Helper function used to generate a single pagination link.
@@ -121,16 +120,21 @@ mkPaginationLink strategy key baseUrl pageNo pageSize =
       link      = add_param pageNoUrl (strategyToQueryStringSizeKey strategy, show pageSize)
 
 {- |
-In the page strategy page numbering starts at 1, where as in the case of offset the numbering
-starts at 0.
--}
-firstPageIndex :: Strategy -> Word
-firstPageIndex PageStrategy = 1
-firstPageIndex OffsetStrategy = 0
+@'PageStragegy'@ pages start at 1.
 
-lastPageIndex :: Strategy -> Pagination -> Word
-lastPageIndex PageStrategy page = numberOfPagesInPageList page
-lastPageIndex OffsetStrategy page = numberOfPagesInPageList page - 1
+@'OffsetStrategy'@ pages start at 0.
+-}
+firstPageIndex :: Strategy -> Pagination -> Maybe PageIndex
+firstPageIndex PageStrategy p = PageIndex 1 <$ guard (pageCount p > 0)
+firstPageIndex OffsetStrategy p = PageIndex 0 <$ guard (pageCount p > 0)
+
+lastPageIndex :: Strategy -> Pagination -> Maybe PageIndex
+lastPageIndex PageStrategy page = do
+  let count = pageCount page
+  PageIndex count <$ guard (count > 0) 
+lastPageIndex OffsetStrategy page = do
+  let count = pageCount page
+  PageIndex (count - 1) <$ guard (count > 0) 
 
 {- |
 Simple pattern matcher than translates a Strategy to a query string element name.
